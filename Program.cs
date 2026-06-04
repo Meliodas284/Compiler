@@ -2,7 +2,9 @@
 using Compilation.Interpreter.Lexer.Models;
 
 string source = """
-abc@ = array(10);
+a = 10;
+i = 0;
+while (i < a) { i = i + 1; }
 """;
 
 Lexer lexer = new(source);
