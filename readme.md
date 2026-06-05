@@ -391,33 +391,9 @@ function_name → SQRT | EXP | LOG | ARRAY
 
 ---
 
-# Нестрогая нормальная форма Грейбах (ННФГ)
-
-## Алгоритм преобразования
-
-Нестрогая нормальная форма Грейбах (ННФГ) требует, чтобы **каждая правая часть правила либо начиналась с терминального символа, либо была пустой (ε)**.
-
-Для преобразования используется замена: в каждом правиле вида `A → B α`, где B — нетерминал, заменяем B на все его правые части. Повторяем до тех пор, пока все правила не будут соответствовать ННФГ.
-
-В грамматике (после устранения левой рекурсии) нетерминальные символы в начале правых частей встречаются в правилах:
-
-```
-statement     → assignment | if_statement | while_statement | ...
-assignment    → variable ASSIGN expression SEMICOLON
-variable      → ID | ID LBRACKET expression RBRACKET
-condition     → expression rel_op expression
-expression    → term expression'
-term          → factor term'
-factor        → variable | ...
-function_call → function_name LPAREN expression RPAREN
-```
-
-Раскрываем каждое такое правило, подставляя правые части нетерминала. Если несколько правил начинаются с одного и того же терминала, выполняем **левую факторизацию** — вводим вспомогательный нетерминал для общего хвоста.
-
----
-
 ## Итоговая грамматика в ННФГ
 
+```text
 statement_list → ID statement_list_id_tail statement_list
 statement_list → IF LPAREN condition RPAREN block else_part statement_list
 statement_list → WHILE LPAREN condition RPAREN block statement_list
