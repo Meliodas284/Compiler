@@ -393,47 +393,20 @@ function_name → SQRT | EXP | LOG | ARRAY
 
 # Нестрогая нормальная форма Грейбах (ННФГ)
 
-## Алгоритм преобразования
-
-Нестрогая нормальная форма Грейбах (ННФГ) требует, чтобы **каждая правая часть правила либо начиналась с терминального символа, либо была пустой (ε)**.
-
-Для преобразования используется замена: в каждом правиле вида `A → B α`, где B — нетерминал, заменяем B на все его правые части. Повторяем до тех пор, пока все правила не будут соответствовать ННФГ.
-
-В грамматике (после устранения левой рекурсии) нетерминальные символы в начале правых частей встречаются в правилах:
-
-```
-statement     → assignment | if_statement | while_statement | ...
-assignment    → variable ASSIGN expression SEMICOLON
-variable      → ID | ID LBRACKET expression RBRACKET
-condition     → expression rel_op expression
-expression    → term expression'
-term          → factor term'
-factor        → variable | ...
-function_call → function_name LPAREN expression RPAREN
-```
-
-Раскрываем каждое такое правило, подставляя правые части нетерминала.
-
----
-
-## Итоговая грамматика в ННФГ
-
 ```text
 program → statement_list
+program → ε
 
-statement_list → statement statement_list
+statement_list → ID statement_list_id_tail statement_list
+statement_list → IF LPAREN condition RPAREN block else_part statement_list
+statement_list → WHILE LPAREN condition RPAREN block statement_list
+statement_list → READ LPAREN ID read_tail RPAREN SEMICOLON statement_list
+statement_list → WRITE LPAREN expression RPAREN SEMICOLON statement_list
+statement_list → LBRACE statement_list RBRACE statement_list
 statement_list → ε
 
-statement → ID statement_tail
-statement → ID LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
-statement → IF LPAREN condition RPAREN block else_part
-statement → WHILE LPAREN condition RPAREN block
-statement → READ LPAREN ID read_tail RPAREN SEMICOLON
-statement → WRITE LPAREN expression RPAREN SEMICOLON
-statement → LBRACE statement_list RBRACE
-
-statement_tail → ASSIGN expression SEMICOLON
-statement_tail → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
+statement_list_id_tail → ASSIGN expression SEMICOLON
+statement_list_id_tail → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
 
 block → LBRACE statement_list RBRACE
 
@@ -443,7 +416,7 @@ else_part → ε
 read_tail → LBRACKET expression RBRACKET
 read_tail → ε
 
-condition → ID condition_tail
+condition → ID condition_id_tail
 condition → NUMBER rel_op expression
 condition → LPAREN expression RPAREN rel_op expression
 condition → SQRT LPAREN expression RPAREN rel_op expression
@@ -451,8 +424,13 @@ condition → EXP LPAREN expression RPAREN rel_op expression
 condition → LOG LPAREN expression RPAREN rel_op expression
 condition → ARRAY LPAREN expression RPAREN rel_op expression
 
-condition_tail → LBRACKET expression RBRACKET rel_op expression
-condition_tail → rel_op expression
+condition_id_tail → LBRACKET expression RBRACKET rel_op expression
+condition_id_tail → LT expression
+condition_id_tail → GT expression
+condition_id_tail → LE expression
+condition_id_tail → GE expression
+condition_id_tail → EQ expression
+condition_id_tail → NE expression
 
 rel_op → LT
 rel_op → GT
@@ -461,54 +439,82 @@ rel_op → GE
 rel_op → EQ
 rel_op → NE
 
-expression  → ID expression_var_tail
-expression  → NUMBER term' expression'
-expression  → LPAREN expression RPAREN term' expression'
-expression  → SQRT LPAREN expression RPAREN term' expression'
-expression  → EXP LPAREN expression RPAREN term' expression'
-expression  → LOG LPAREN expression RPAREN term' expression'
-expression  → ARRAY LPAREN expression RPAREN term' expression'
+expression → ID expression_id_tail
+expression → NUMBER expression_num_tail
+expression → LPAREN expression RPAREN term' expression'
+expression → SQRT LPAREN expression RPAREN term' expression'
+expression → EXP LPAREN expression RPAREN term' expression'
+expression → LOG LPAREN expression RPAREN term' expression'
+expression → ARRAY LPAREN expression RPAREN term' expression'
 
-expression_var_tail → LBRACKET expression RBRACKET term' expression'
-expression_var_tail → term' expression'
+expression_id_tail → LBRACKET expression RBRACKET term' expression'
+expression_id_tail → MUL expression_factor_tail expression'
+expression_id_tail → DIV expression_factor_tail expression'
+expression_id_tail → PLUS term expression'
+expression_id_tail → MINUS term expression'
+expression_id_tail → ε
 
-expression' → PLUS ID expression_var_tail
-expression' → PLUS NUMBER term' expression'
-expression' → PLUS LPAREN expression RPAREN term' expression'
-expression' → PLUS SQRT LPAREN expression RPAREN term' expression'
-expression' → PLUS EXP LPAREN expression RPAREN term' expression'
-expression' → PLUS LOG LPAREN expression RPAREN term' expression'
-expression' → PLUS ARRAY LPAREN expression RPAREN term' expression'
-expression' → MINUS ID expression_var_tail
-expression' → MINUS NUMBER term' expression'
-expression' → MINUS LPAREN expression RPAREN term' expression'
-expression' → MINUS SQRT LPAREN expression RPAREN term' expression'
-expression' → MINUS EXP LPAREN expression RPAREN term' expression'
-expression' → MINUS LOG LPAREN expression RPAREN term' expression'
-expression' → MINUS ARRAY LPAREN expression RPAREN term' expression'
+expression_num_tail → MUL expression_factor_tail expression'
+expression_num_tail → DIV expression_factor_tail expression'
+expression_num_tail → PLUS term expression'
+expression_num_tail → MINUS term expression'
+expression_num_tail → ε
+
+expression_factor_tail → ID factor_id_tail
+expression_factor_tail → NUMBER term''
+expression_factor_tail → LPAREN expression RPAREN term''
+expression_factor_tail → SQRT LPAREN expression RPAREN term''
+expression_factor_tail → EXP LPAREN expression RPAREN term''
+expression_factor_tail → LOG LPAREN expression RPAREN term''
+expression_factor_tail → ARRAY LPAREN expression RPAREN term''
+
+factor_id_tail → LBRACKET expression RBRACKET term''
+factor_id_tail → ε
+
+term'' → MUL expression_factor_tail
+term'' → DIV expression_factor_tail
+term'' → ε
+
+expression' → PLUS term expression'
+expression' → MINUS term expression'
 expression' → ε
 
-term' → MUL ID term_var_tail
-term' → MUL NUMBER term'
-term' → MUL LPAREN expression RPAREN term'
-term' → MUL SQRT LPAREN expression RPAREN term'
-term' → MUL EXP LPAREN expression RPAREN term'
-term' → MUL LOG LPAREN expression RPAREN term'
-term' → MUL ARRAY LPAREN expression RPAREN term'
-term' → DIV ID term_var_tail
-term' → DIV NUMBER term'
-term' → DIV LPAREN expression RPAREN term'
-term' → DIV SQRT LPAREN expression RPAREN term'
-term' → DIV EXP LPAREN expression RPAREN term'
-term' → DIV LOG LPAREN expression RPAREN term'
-term' → DIV ARRAY LPAREN expression RPAREN term'
+term → ID term_id_tail
+term → NUMBER term'
+term → LPAREN expression RPAREN term'
+term → SQRT LPAREN expression RPAREN term'
+term → EXP LPAREN expression RPAREN term'
+term → LOG LPAREN expression RPAREN term'
+term → ARRAY LPAREN expression RPAREN term'
+
+term_id_tail → LBRACKET expression RBRACKET term'
+term_id_tail → MUL term_mul_tail term'
+term_id_tail → DIV term_div_tail term'
+term_id_tail → ε
+
+term' → MUL term_mul_tail term'
+term' → DIV term_div_tail term'
 term' → ε
 
-term_var_tail → LBRACKET expression RBRACKET term'
-term_var_tail → term'
-```
+term_mul_tail → ID term_id_base
+term_mul_tail → NUMBER
+term_mul_tail → LPAREN expression RPAREN
+term_mul_tail → SQRT LPAREN expression RPAREN
+term_mul_tail → EXP LPAREN expression RPAREN
+term_mul_tail → LOG LPAREN expression RPAREN
+term_mul_tail → ARRAY LPAREN expression RPAREN
 
-> **Замечание.** Нетерминалы `expression_var_tail` и `term_var_tail` введены для факторизации правил, начинающихся с `ID`: после `ID` возможны как `[expr]` (индексированный элемент массива), так и продолжение `term'` / `expression'`. Это обязательное условие для LL(1)-анализатора — иначе первый терминал (`ID`) не определяет однозначно, какое правило применить.
+term_div_tail → ID term_id_base
+term_div_tail → NUMBER
+term_div_tail → LPAREN expression RPAREN
+term_div_tail → SQRT LPAREN expression RPAREN
+term_div_tail → EXP LPAREN expression RPAREN
+term_div_tail → LOG LPAREN expression RPAREN
+term_div_tail → ARRAY LPAREN expression RPAREN
+
+term_id_base → LBRACKET expression RBRACKET
+term_id_base → ε
+```
 
 ---
 
@@ -530,7 +536,6 @@ term_var_tail → term'
 | `:=` | Записать в ОПС операцию присваивания |
 | `–'` | Записать в ОПС операцию **унарного минуса** (отличается от вычитания!) |
 | `i` | Записать в ОПС операцию индексирования одномерного массива |
-| `i2` | Записать в ОПС операцию индексирования двумерного массива |
 | `<` `>` `<=` `>=` `==` `!=` | Записать в ОПС соответствующую операцию сравнения |
 | `r` | Записать в ОПС операцию ввода (read) — операнд должен быть ссылкой на переменную |
 | `w` | Записать в ОПС операцию вывода (write) — операнд — числовое значение |
@@ -572,114 +577,144 @@ term_var_tail → term'
 
 ## Таблица семантических действий по правилам грамматики
 
-Правила даны в ННФГ. Семантические действия записываются **по одному на каждый символ правой части** (включая терминалы). Порядок действий соответствует порядку символов в правой части.
-
-### Присваивание
-
-```
-A  → ID B
-B  → ASSIGN expression SEMICOLON
-B  → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
-```
-Семантические действия для `A → ID B`: `a □`
-
-Для `B → ASSIGN expression SEMICOLON`: `□ □ :=` (`:=` записывается после вычисления выражения, поэтому стоит последним перед `;`, которое не генерирует ничего: `□ □ :=`)
-
-Для `B → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON`: `□ □ i □ □ :=` (после индекса — операция `i`; после выражения правой части — `:=`)
-
-## Арифметические выражения
-
-| Грамматика | Семантическое действие |
-|------------|------------------------|
-| factor → NUMBER | k |
-| factor → variable | a |
-| factor → LPAREN expression RPAREN | — |
-| term' → MUL factor term' | □ □ * |
-| term' → DIV factor term' | □ □ / |
-| expression' → PLUS term expression' | □ □ + |
-| expression' → MINUS term expression' | □ □ - |
-| function_call → SQRT LPAREN expression RPAREN | □ □ □ sqrt |
-| function_call → EXP LPAREN expression RPAREN | □ □ □ exp |
-| function_call → LOG LPAREN expression RPAREN | □ □ □ log |
-| variable → ID LBRACKET expression RBRACKET | a □ □ i |
-
-Обозначения:
-
-```text
-a — идентификатор
-k — константа
-i — операция индексации массива
-□ — место для ранее сгенерированной ОПС
-```
-
----
-
-## Условия
-
-| Грамматика | Семантическое действие |
-|------------|------------------------|
-| condition → expression LT expression | □ □ < |
-| condition → expression GT expression | □ □ > |
-| condition → expression LE expression | □ □ <= |
-| condition → expression GE expression | □ □ >= |
-| condition → expression EQ expression | □ □ == |
-| condition → expression NE expression | □ □ != |
-
-После выполнения операции сравнения в стек помещается логическое значение:
-
-```text
-1 — истина
-0 — ложь
-```
-
-Полученный результат используется командами условного перехода:
-
-```text
-jf
-```
-
-при обработке операторов:
-
-```text
-if
-while
-```
-
-### Условный оператор if
+### Программа / Список операторов
 
 | Нетерминал | Правая часть | Сем. действия |
 |------------|-------------|--------------|
-| `if_statement` | `IF LPAREN condition RPAREN block else_part` | `□ □ □ 1 □ □ 3` |
-| `else_part` | `ELSE block` | `2 □` |
-| `else_part` | `ε` | — |
+| `program` | `statement_list` | `□` |
+| `program` | `ε` | — |
+| `statement_list` | `ID statement_list_id_tail statement_list` | `a □ □` |
+| `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `4 □ □ 1 □ □ □` |
+| `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5 □` |
+| `statement_list` | `READ LPAREN ID read_tail RPAREN SEMICOLON statement_list` | `□ □ a □ □ □ □` |
+| `statement_list` | `WRITE LPAREN expression RPAREN SEMICOLON statement_list` | `□ □ □ w □ □ □` |
+| `statement_list` | `LBRACE statement_list RBRACE statement_list` | `□ □ □ □` |
+| `statement_list` | `ε` | — |
 
-> Программа `1` стоит напротив `RPAREN` (правая скобка условия) — т.е. выполняется сразу после того, как условие полностью разобрано. Программа `3` стоит напротив нетерминала `else_part` (или отдельного `Z`), завершая метку.
+> Пояснение: `4` стоит напротив `IF` / `WHILE` (не смешиваем — для `IF` это фиксация начала ветвления через `1`, для `WHILE` — фиксация начала цикла через `4`). Обратите внимание: программа `4` здесь указана условно; для `IF` первым семантическим действием является `□`, а программа `1` вызывается после `RPAREN`. Для `WHILE` программа `4` вызывается на терминале `WHILE`.
 
-### Оператор цикла while
-
-| Нетерминал | Правая часть | Сем. действия |
-|------------|-------------|--------------|
-| `while_statement` | `WHILE LPAREN condition RPAREN block` | `4 □ □ □ 1 □ 5` |
-
-> `4` — напротив `WHILE` (фиксируем начало цикла **до** разбора условия). `1` — напротив `RPAREN` (после условия). `5` — напротив `block` (после тела цикла).
-
-### Операторы ввода и вывода
+Уточнённая таблица с разделением `IF` и `WHILE`:
 
 | Нетерминал | Правая часть | Сем. действия |
 |------------|-------------|--------------|
-| `read_statement` | `READ LPAREN ID RPAREN SEMICOLON` | `□ □ a □ □` + операция `r` при закрытии `H → λ` → итого: `□ □ a □ r □` |
-| `read_statement` | `READ LPAREN ID LBRACKET expression RBRACKET RPAREN SEMICOLON` | `□ □ a □ □ i □ r □` |
-| `write_statement` | `WRITE LPAREN expression RPAREN SEMICOLON` | `□ □ □ w □` |
+| `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `□ □ □ 1 □ □ □` |
+| `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5 □` |
 
-> Точнее: `r` записывается **после** того как ссылка на переменную (возможно, с индексом) уже в ОПС. `w` — после того как ОПС выражения построена.
+### Хвосты операторов (присваивание)
 
-### Составной оператор (блок)
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `statement_list_id_tail` | `ASSIGN expression SEMICOLON` | `□ □ :=` |
+| `statement_list_id_tail` | `LBRACKET expression RBRACKET ASSIGN expression SEMICOLON` | `□ □ i □ □ :=` |
 
-| Правая часть | Сем. действия |
-|-------------|--------------|
-| `LBRACE statement_list RBRACE` | `□ □ □` |
-| `statement statement_list` | `□ □` |
-| `ε` | — |
+### Блок и else
+
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `block` | `LBRACE statement_list RBRACE` | `□ □ □` |
+| `else_part` | `ELSE LBRACE statement_list RBRACE` | `2 □ □ 3` |
+| `else_part` | `ε` | `3` |
+
+> `2` стоит напротив `ELSE` — в момент встречи `else` генерируем безусловный переход через ветку else. `3` стоит последним в `else_part → ELSE LBRACE statement_list RBRACE` и единственным в `else_part → ε` — завершаем метку.
+
+### Ввод и вывод
+
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `read_tail` | `LBRACKET expression RBRACKET` | `□ □ i` |
+| `read_tail` | `ε` | `r` |
+
+> `r` в правиле `read_tail → ε` означает: переменная (с индексом или без) уже помещена в ОПС — генерируем операцию `r`.
+
+### Условие
+
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `condition` | `ID condition_id_tail` | `a □` |
+| `condition` | `NUMBER rel_op expression` | `k □ □` |
+| `condition` | `LPAREN expression RPAREN rel_op expression` | `□ □ □ □ □` |
+| `condition` | `SQRT LPAREN expression RPAREN rel_op expression` | `□ □ □ sqrt □ □` |
+| `condition` | `EXP LPAREN expression RPAREN rel_op expression` | `□ □ □ exp □ □` |
+| `condition` | `LOG LPAREN expression RPAREN rel_op expression` | `□ □ □ log □ □` |
+| `condition` | `ARRAY LPAREN expression RPAREN rel_op expression` | `□ □ □ □ □ □` |
+| `condition_id_tail` | `LBRACKET expression RBRACKET rel_op expression` | `□ □ i □ □` |
+| `condition_id_tail` | `LT expression` | `< □` |
+| `condition_id_tail` | `GT expression` | `> □` |
+| `condition_id_tail` | `LE expression` | `<= □` |
+| `condition_id_tail` | `GE expression` | `>= □` |
+| `condition_id_tail` | `EQ expression` | `== □` |
+| `condition_id_tail` | `NE expression` | `!= □` |
+| `rel_op` | `LT` | `<` |
+| `rel_op` | `GT` | `>` |
+| `rel_op` | `LE` | `<=` |
+| `rel_op` | `GE` | `>=` |
+| `rel_op` | `EQ` | `==` |
+| `rel_op` | `NE` | `!=` |
+
+### Выражения
+
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `expression` | `ID expression_id_tail` | `a □` |
+| `expression` | `NUMBER expression_num_tail` | `k □` |
+| `expression` | `LPAREN expression RPAREN term' expression'` | `□ □ □ □ □` |
+| `expression` | `SQRT LPAREN expression RPAREN term' expression'` | `□ □ □ sqrt □ □` |
+| `expression` | `EXP LPAREN expression RPAREN term' expression'` | `□ □ □ exp □ □` |
+| `expression` | `LOG LPAREN expression RPAREN term' expression'` | `□ □ □ log □ □` |
+| `expression` | `ARRAY LPAREN expression RPAREN term' expression'` | `□ □ □ □ □ □` |
+| `expression_id_tail` | `LBRACKET expression RBRACKET term' expression'` | `□ □ i □ □` |
+| `expression_id_tail` | `MUL expression_factor_tail expression'` | `* □ □` |
+| `expression_id_tail` | `DIV expression_factor_tail expression'` | `/ □ □` |
+| `expression_id_tail` | `PLUS term expression'` | `□ □ +` |
+| `expression_id_tail` | `MINUS term expression'` | `□ □ –` |
+| `expression_id_tail` | `ε` | — |
+| `expression_num_tail` | `MUL expression_factor_tail expression'` | `* □ □` |
+| `expression_num_tail` | `DIV expression_factor_tail expression'` | `/ □ □` |
+| `expression_num_tail` | `PLUS term expression'` | `□ □ +` |
+| `expression_num_tail` | `MINUS term expression'` | `□ □ –` |
+| `expression_num_tail` | `ε` | — |
+| `expression'` | `PLUS term expression'` | `□ □ +` |
+| `expression'` | `MINUS term expression'` | `□ □ –` |
+| `expression'` | `ε` | — |
+
+> Операция `+` / `–` стоит последней, так как в ОПС операция записывается после обоих операндов (постфиксная запись).
+
+### Термы
+
+| Нетерминал | Правая часть | Сем. действия |
+|------------|-------------|--------------|
+| `term` | `ID term_id_tail` | `a □` |
+| `term` | `NUMBER term'` | `k □` |
+| `term` | `LPAREN expression RPAREN term'` | `□ □ □ □` |
+| `term` | `SQRT LPAREN expression RPAREN term'` | `□ □ □ sqrt □` |
+| `term` | `EXP LPAREN expression RPAREN term'` | `□ □ □ exp □` |
+| `term` | `LOG LPAREN expression RPAREN term'` | `□ □ □ log □` |
+| `term` | `ARRAY LPAREN expression RPAREN term'` | `□ □ □ □ □` |
+| `term_id_tail` | `LBRACKET expression RBRACKET term'` | `□ □ i □` |
+| `term_id_tail` | `MUL term_mul_tail term'` | `* □ □` |
+| `term_id_tail` | `DIV term_div_tail term'` | `/ □ □` |
+| `term_id_tail` | `ε` | — |
+| `term'` | `MUL term_mul_tail term'` | `□ □ *` |
+| `term'` | `DIV term_div_tail term'` | `□ □ /` |
+| `term'` | `ε` | — |
+| `term_mul_tail` | `ID term_id_base` | `a □` |
+| `term_mul_tail` | `NUMBER` | `k` |
+| `term_mul_tail` | `LPAREN expression RPAREN` | `□ □ □` |
+| `term_mul_tail` | `SQRT LPAREN expression RPAREN` | `□ □ □ sqrt` |
+| `term_mul_tail` | `EXP LPAREN expression RPAREN` | `□ □ □ exp` |
+| `term_mul_tail` | `LOG LPAREN expression RPAREN` | `□ □ □ log` |
+| `term_mul_tail` | `ARRAY LPAREN expression RPAREN` | `□ □ □ □` |
+| `term_div_tail` | `ID term_id_base` | `a □` |
+| `term_div_tail` | `NUMBER` | `k` |
+| `term_div_tail` | `LPAREN expression RPAREN` | `□ □ □` |
+| `term_div_tail` | `SQRT LPAREN expression RPAREN` | `□ □ □ sqrt` |
+| `term_div_tail` | `EXP LPAREN expression RPAREN` | `□ □ □ exp` |
+| `term_div_tail` | `LOG LPAREN expression RPAREN` | `□ □ □ log` |
+| `term_div_tail` | `ARRAY LPAREN expression RPAREN` | `□ □ □ □` |
+| `term_id_base` | `LBRACKET expression RBRACKET` | `□ □ i` |
+| `term_id_base` | `ε` | — |
+
+> Операции `*` и `/` в `term'` стоят **последними** — после обоих операндов (постфиксная форма).
 
 ---
 
@@ -694,20 +729,19 @@ while
 | 5 | Унарный минус | `–'` | 1 | Извлечь один операнд, изменить знак, результат в магазин |
 | 6 | Присваивание | `:=` | 2 | Первый операнд — ссылка на переменную; второй — значение. Записать значение по ссылке. В магазин ничего не кладётся |
 | 7 | Индексирование одномерного массива | `i` | 2 | Первый операнд — ссылка на паспорт массива; второй — значение индекса. Результат — ссылка на элемент `M + d*k`. Записать ссылку в магазин |
-| 8 | Индексирование двумерного массива | `i2` | 3 | Первый операнд — ссылка на паспорт; второй — индекс по 1-му измерению; третий — индекс по 2-му. Результат — ссылка по формуле `M + d*(k*m + j)`. Записать ссылку в магазин |
-| 9 | Меньше | `<` | 2 | Сравнить два операнда, результат `true`/`false` в магазин |
-| 10 | Больше | `>` | 2 | Аналогично |
-| 11 | Меньше или равно | `<=` | 2 | Аналогично |
-| 12 | Больше или равно | `>=` | 2 | Аналогично |
-| 13 | Равно | `==` | 2 | Аналогично |
-| 14 | Не равно | `!=` | 2 | Аналогично |
-| 15 | Условный переход (по false) | `jf` | 2 | Извлечь `bool` (1-й) и метку (2-й). Если `bool = false` — перейти на метку. Если `true` — продолжить. В магазин ничего не кладётся |
-| 16 | Безусловный переход | `j` | 1 | Извлечь метку, перейти на неё. В магазин ничего не кладётся |
-| 17 | Ввод | `r` | 1 | Извлечь ссылку на переменную, прочитать значение со стандартного ввода, записать по ссылке. В магазин ничего не кладётся |
-| 18 | Вывод | `w` | 1 | Извлечь значение из магазина, вывести на стандартный вывод. В магазин ничего не кладётся |
-| 19 | Квадратный корень | `sqrt` | 1 | Извлечь операнд, вычислить `√x`, результат в магазин |
-| 20 | Экспонента | `exp` | 1 | Извлечь операнд, вычислить `eˣ`, результат в магазин |
-| 21 | Натуральный логарифм | `log` | 1 | Извлечь операнд, вычислить `ln(x)`, результат в магазин |
+| 8 | Меньше | `<` | 2 | Сравнить два операнда, результат `true`/`false` в магазин |
+| 9 | Больше | `>` | 2 | Аналогично |
+| 10 | Меньше или равно | `<=` | 2 | Аналогично |
+| 11 | Больше или равно | `>=` | 2 | Аналогично |
+| 12 | Равно | `==` | 2 | Аналогично |
+| 13 | Не равно | `!=` | 2 | Аналогично |
+| 14 | Условный переход (по false) | `jf` | 2 | Извлечь `bool` (1-й) и метку (2-й). Если `bool = false` — перейти на метку. Если `true` — продолжить. В магазин ничего не кладётся |
+| 15 | Безусловный переход | `j` | 1 | Извлечь метку, перейти на неё. В магазин ничего не кладётся |
+| 16 | Ввод | `r` | 1 | Извлечь ссылку на переменную, прочитать значение со стандартного ввода, записать по ссылке. В магазин ничего не кладётся |
+| 17 | Вывод | `w` | 1 | Извлечь значение из магазина, вывести на стандартный вывод. В магазин ничего не кладётся |
+| 18 | Квадратный корень | `sqrt` | 1 | Извлечь операнд, вычислить `√x`, результат в магазин |
+| 19 | Экспонента | `exp` | 1 | Извлечь операнд, вычислить `eˣ`, результат в магазин |
+| 20 | Натуральный логарифм | `log` | 1 | Извлечь операнд, вычислить `ln(x)`, результат в магазин |
 
 ---
 
@@ -752,110 +786,3 @@ while
 | Числовое значение | Результат арифметической операции |
 | Ссылка на массив | Адрес паспорта массива |
 | Ссылка на элемент массива | Вычисленный адрес `M + d*k` (результат операции `i`) |
-
----
-
-## Примеры генерации ОПС
-
-### Пример 1. Присваивание с формулой
-
-Входная программа:
-```
-x = a + b * 2;
-```
-
-Сгенерированная ОПС:
-```
-x  a  b  2  *  +  :=
-```
-
-| Индекс | Тип | Значение | Пояснение |
-|--------|-----|----------|-----------|
-| 0 | `TYPE_VAR` | ссылка на `x` | Левая часть присваивания |
-| 1 | `TYPE_VAR` | ссылка на `a` | |
-| 2 | `TYPE_VAR` | ссылка на `b` | |
-| 3 | `TYPE_CONST` | ссылка на `2` | |
-| 4 | `TYPE_OP` | `OP_MUL` | `b * 2` |
-| 5 | `TYPE_OP` | `OP_ADD` | `a + (b*2)` |
-| 6 | `TYPE_OP` | `OP_ASSIGN` | `x := ...` |
-
-### Пример 2. Индексирование массива
-
-Входная цепочка:
-```
-M[k] := a * L[k, j+d]
-```
-
-Сгенерированная ОПС:
-```
-M  k  i  a  L  k  j  d  +  i2  *  :=
-```
-
-### Пример 3. Условный оператор if-else
-
-Входная цепочка:
-```
-if a > b then a := b else b := a
-```
-
-Сгенерированная ОПС:
-```
-a  b  >  m1  jf  a  b  :=  m2  j  b  a  :=
-              ↑                   ↑
-             m1                  m2
-```
-
-| Индекс | Тип | Значение | Пояснение |
-|--------|-----|----------|-----------|
-| 0 | `TYPE_VAR` | `a` | |
-| 1 | `TYPE_VAR` | `b` | |
-| 2 | `TYPE_OP` | `OP_GT` | `a > b` |
-| 3 | `TYPE_LABEL` | `10` | m1 — заполняется сем. программой 1 |
-| 4 | `TYPE_OP` | `OP_JF` | Переход если false |
-| 5 | `TYPE_VAR` | `a` | |
-| 6 | `TYPE_VAR` | `b` | |
-| 7 | `TYPE_OP` | `OP_ASSIGN` | `a := b` |
-| 8 | `TYPE_LABEL` | `12` | m2 — заполняется сем. программой 2 |
-| 9 | `TYPE_OP` | `OP_J` | Безусловный переход через else |
-| 10 | `TYPE_VAR` | `b` | ← сюда прыгает jf |
-| 11 | `TYPE_VAR` | `a` | |
-| 12 | `TYPE_OP` | `OP_ASSIGN` | `b := a` |
-
-### Пример 4. Цикл while
-
-Входная цепочка:
-```
-while a > b do a := b
-```
-
-Сгенерированная ОПС:
-```
-a  b  >  m1  jf  a  b  :=  m0  j
-↑                                ↑
-m0                              m1
-```
-
-| Индекс | Тип | Значение | Пояснение |
-|--------|-----|----------|-----------|
-| 0 | `TYPE_VAR` | `a` | ← m0, запомнено сем. программой 4 |
-| 1 | `TYPE_VAR` | `b` | |
-| 2 | `TYPE_OP` | `OP_GT` | `a > b` |
-| 3 | `TYPE_LABEL` | `9` | m1 — заполняется сем. программой 5 |
-| 4 | `TYPE_OP` | `OP_JF` | Выход из цикла если false |
-| 5 | `TYPE_VAR` | `a` | |
-| 6 | `TYPE_VAR` | `b` | |
-| 7 | `TYPE_OP` | `OP_ASSIGN` | `a := b` |
-| 8 | `TYPE_LABEL` | `0` | m0 — адрес начала цикла |
-| 9 | `TYPE_OP` | `OP_J` | Возврат на начало цикла |
-
-### Пример 5. Ввод и вывод с массивом
-
-Входная цепочка:
-```
-begin read(a); read(M[a]); write(M[a] * a) end
-```
-
-Сгенерированная ОПС:
-```
-a  r  M  a  i  r  M  a  i  a  *  w
-```
