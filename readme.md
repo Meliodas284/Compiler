@@ -587,68 +587,63 @@ B  → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
 
 Для `B → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON`: `□ □ i □ □ :=` (после индекса — операция `i`; после выражения правой части — `:=`)
 
-### Выражения и термы
+## Арифметические выражения
 
-Таблица генератора ОПС:
+| Грамматика | Семантическое действие |
+|------------|------------------------|
+| factor → NUMBER | k |
+| factor → variable | a |
+| factor → LPAREN expression RPAREN | — |
+| term' → MUL factor term' | □ □ * |
+| term' → DIV factor term' | □ □ / |
+| expression' → PLUS term expression' | □ □ + |
+| expression' → MINUS term expression' | □ □ - |
+| function_call → SQRT LPAREN expression RPAREN | □ □ □ sqrt |
+| function_call → EXP LPAREN expression RPAREN | □ □ □ exp |
+| function_call → LOG LPAREN expression RPAREN | □ □ □ log |
+| variable → ID LBRACKET expression RBRACKET | a □ □ i |
 
-| Нетерминал | Правая часть | Сем. действия |
-|------------|-------------|--------------|
-| `S` | `(S)VU` | `□ □ □ □ □` |
-| `S` | `aHVU` | `a □ □ □` |
-| `S` | `kVU` | `k □ □` |
-| `S` | `+GVU` | `□ □ □ □` |
-| `S` | `–GVU` | `□ □ –' □` |
-| `U` | `+TU` | `□ □ +` |
-| `U` | `–TU` | `□ □ –` |
-| `U` | `λ` | — |
-| `T` | `(S)V` | `□ □ □ □` |
-| `T` | `aHV` | `a □ □` |
-| `T` | `kV` | `k □` |
-| `T` | `+GV` | `□ □ □` |
-| `T` | `–GV` | `□ □ –'` |
-| `V` | `*FV` | `□ □ *` |
-| `V` | `/FV` | `□ □ /` |
-| `V` | `λ` | — |
-| `F` | `(S)` | `□ □ □` |
-| `F` | `aH` | `a □` |
-| `F` | `k` | `k` |
-| `F` | `+G` | `□ □` |
-| `F` | `–GZ` | `□ □ –'` |
-| `G` | `(S)` | `□ □ □` |
-| `G` | `aH` | `a □` |
-| `G` | `k` | `k` |
-| `H` | `[SK` | `□ □ □` |
-| `H` | `λ` | — |
-| `K` | `]` | `i` |
-| `K` | `,S]` | `□ □ i2` |
-| `Z` | `λ` | — |
+Обозначения:
 
-### Условие (condition)
-
-После преобразования к ННФГ и факторизации:
-
-```
-C → (S)VUD | aHVUD | kVUD | +GVUD | –GVUD
-D → <SZ  |  >SZ
+```text
+a — идентификатор
+k — константа
+i — операция индексации массива
+□ — место для ранее сгенерированной ОПС
 ```
 
-Семантические действия для `C`:
+---
 
-| Правая часть `C` | Сем. действия |
-|-----------------|--------------|
-| `(S)VUD` | `□ □ □ □ □ □` |
-| `aHVUD` | `a □ □ □ □` |
-| `kVUD` | `k □ □ □` |
-| `+GVUD` | `□ □ □ □ □` |
-| `–GVUD` | `□ □ –' □ □` |
+## Условия
 
-Семантические действия для `D`:
+| Грамматика | Семантическое действие |
+|------------|------------------------|
+| condition → expression LT expression | □ □ < |
+| condition → expression GT expression | □ □ > |
+| condition → expression LE expression | □ □ <= |
+| condition → expression GE expression | □ □ >= |
+| condition → expression EQ expression | □ □ == |
+| condition → expression NE expression | □ □ != |
 
-| Правая часть `D` | Сем. действия |
-|-----------------|--------------|
-| `<SZ` | `□ □ <` |
-| `>SZ` | `□ □ >` |
+После выполнения операции сравнения в стек помещается логическое значение:
 
+```text
+1 — истина
+0 — ложь
+```
+
+Полученный результат используется командами условного перехода:
+
+```text
+jf
+```
+
+при обработке операторов:
+
+```text
+if
+while
+```
 
 ### Условный оператор if
 
