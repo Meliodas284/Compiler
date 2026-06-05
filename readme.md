@@ -393,9 +393,30 @@ function_name → SQRT | EXP | LOG | ARRAY
 
 # Нестрогая нормальная форма Грейбах (ННФГ)
 
-```text
-program → statement_list
-program → ε
+## Алгоритм преобразования
+
+Нестрогая нормальная форма Грейбах (ННФГ) требует, чтобы **каждая правая часть правила либо начиналась с терминального символа, либо была пустой (ε)**.
+
+Для преобразования используется замена: в каждом правиле вида `A → B α`, где B — нетерминал, заменяем B на все его правые части. Повторяем до тех пор, пока все правила не будут соответствовать ННФГ.
+
+В грамматике (после устранения левой рекурсии) нетерминальные символы в начале правых частей встречаются в правилах:
+
+```
+statement     → assignment | if_statement | while_statement | ...
+assignment    → variable ASSIGN expression SEMICOLON
+variable      → ID | ID LBRACKET expression RBRACKET
+condition     → expression rel_op expression
+expression    → term expression'
+term          → factor term'
+factor        → variable | ...
+function_call → function_name LPAREN expression RPAREN
+```
+
+Раскрываем каждое такое правило, подставляя правые части нетерминала. Если несколько правил начинаются с одного и того же терминала, выполняем **левую факторизацию** — вводим вспомогательный нетерминал для общего хвоста.
+
+---
+
+## Итоговая грамматика в ННФГ
 
 statement_list → ID statement_list_id_tail statement_list
 statement_list → IF LPAREN condition RPAREN block else_part statement_list
@@ -515,7 +536,6 @@ term_div_tail → ARRAY LPAREN expression RPAREN
 term_id_base → LBRACKET expression RBRACKET
 term_id_base → ε
 ```
-
 ---
 
 # Семантические действия для генерации ОПС
@@ -577,28 +597,17 @@ term_id_base → ε
 
 ## Таблица семантических действий по правилам грамматики
 
-### Программа / Список операторов
+### Список операторов (стартовый нетерминал)
 
 | Нетерминал | Правая часть | Сем. действия |
 |------------|-------------|--------------|
-| `program` | `statement_list` | `□` |
-| `program` | `ε` | — |
 | `statement_list` | `ID statement_list_id_tail statement_list` | `a □ □` |
-| `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `4 □ □ 1 □ □ □` |
-| `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5 □` |
+| `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `□ □ □ 1 □ □ □` |
+| `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5` |
 | `statement_list` | `READ LPAREN ID read_tail RPAREN SEMICOLON statement_list` | `□ □ a □ □ □ □` |
-| `statement_list` | `WRITE LPAREN expression RPAREN SEMICOLON statement_list` | `□ □ □ w □ □ □` |
+| `statement_list` | `WRITE LPAREN expression RPAREN SEMICOLON statement_list` | `□ □ □ □ w □` |
 | `statement_list` | `LBRACE statement_list RBRACE statement_list` | `□ □ □ □` |
 | `statement_list` | `ε` | — |
-
-> Пояснение: `4` стоит напротив `IF` / `WHILE` (не смешиваем — для `IF` это фиксация начала ветвления через `1`, для `WHILE` — фиксация начала цикла через `4`). Обратите внимание: программа `4` здесь указана условно; для `IF` первым семантическим действием является `□`, а программа `1` вызывается после `RPAREN`. Для `WHILE` программа `4` вызывается на терминале `WHILE`.
-
-Уточнённая таблица с разделением `IF` и `WHILE`:
-
-| Нетерминал | Правая часть | Сем. действия |
-|------------|-------------|--------------|
-| `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `□ □ □ 1 □ □ □` |
-| `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5 □` |
 
 ### Хвосты операторов (присваивание)
 
@@ -615,8 +624,6 @@ term_id_base → ε
 | `else_part` | `ELSE LBRACE statement_list RBRACE` | `2 □ □ 3` |
 | `else_part` | `ε` | `3` |
 
-> `2` стоит напротив `ELSE` — в момент встречи `else` генерируем безусловный переход через ветку else. `3` стоит последним в `else_part → ELSE LBRACE statement_list RBRACE` и единственным в `else_part → ε` — завершаем метку.
-
 ### Ввод и вывод
 
 | Нетерминал | Правая часть | Сем. действия |
@@ -624,7 +631,7 @@ term_id_base → ε
 | `read_tail` | `LBRACKET expression RBRACKET` | `□ □ i` |
 | `read_tail` | `ε` | `r` |
 
-> `r` в правиле `read_tail → ε` означает: переменная (с индексом или без) уже помещена в ОПС — генерируем операцию `r`.
+> `r` в правиле `read_tail → ε` выполняется при **свёртке по пустому правилу**: к этому моменту переменная (скалярная или с индексом) уже помещена в ОПС — генерируем операцию `r`. Действие при ε-правиле — стандартный приём в схемах трансляции.
 
 ### Условие
 
@@ -663,21 +670,19 @@ term_id_base → ε
 | `expression` | `LOG LPAREN expression RPAREN term' expression'` | `□ □ □ log □ □` |
 | `expression` | `ARRAY LPAREN expression RPAREN term' expression'` | `□ □ □ □ □ □` |
 | `expression_id_tail` | `LBRACKET expression RBRACKET term' expression'` | `□ □ i □ □` |
-| `expression_id_tail` | `MUL expression_factor_tail expression'` | `* □ □` |
-| `expression_id_tail` | `DIV expression_factor_tail expression'` | `/ □ □` |
+| `expression_id_tail` | `MUL expression_factor_tail expression'` | `□ * □` |
+| `expression_id_tail` | `DIV expression_factor_tail expression'` | `□ / □` |
 | `expression_id_tail` | `PLUS term expression'` | `□ □ +` |
 | `expression_id_tail` | `MINUS term expression'` | `□ □ –` |
 | `expression_id_tail` | `ε` | — |
-| `expression_num_tail` | `MUL expression_factor_tail expression'` | `* □ □` |
-| `expression_num_tail` | `DIV expression_factor_tail expression'` | `/ □ □` |
+| `expression_num_tail` | `MUL expression_factor_tail expression'` | `□ * □` |
+| `expression_num_tail` | `DIV expression_factor_tail expression'` | `□ / □` |
 | `expression_num_tail` | `PLUS term expression'` | `□ □ +` |
 | `expression_num_tail` | `MINUS term expression'` | `□ □ –` |
 | `expression_num_tail` | `ε` | — |
 | `expression'` | `PLUS term expression'` | `□ □ +` |
 | `expression'` | `MINUS term expression'` | `□ □ –` |
 | `expression'` | `ε` | — |
-
-> Операция `+` / `–` стоит последней, так как в ОПС операция записывается после обоих операндов (постфиксная запись).
 
 ### Термы
 
@@ -691,11 +696,11 @@ term_id_base → ε
 | `term` | `LOG LPAREN expression RPAREN term'` | `□ □ □ log □` |
 | `term` | `ARRAY LPAREN expression RPAREN term'` | `□ □ □ □ □` |
 | `term_id_tail` | `LBRACKET expression RBRACKET term'` | `□ □ i □` |
-| `term_id_tail` | `MUL term_mul_tail term'` | `* □ □` |
-| `term_id_tail` | `DIV term_div_tail term'` | `/ □ □` |
+| `term_id_tail` | `MUL term_mul_tail term'` | `□ * □` |
+| `term_id_tail` | `DIV term_div_tail term'` | `□ / □` |
 | `term_id_tail` | `ε` | — |
-| `term'` | `MUL term_mul_tail term'` | `□ □ *` |
-| `term'` | `DIV term_div_tail term'` | `□ □ /` |
+| `term'` | `MUL term_mul_tail term'` | `□ * □` |
+| `term'` | `DIV term_div_tail term'` | `□ / □` |
 | `term'` | `ε` | — |
 | `term_mul_tail` | `ID term_id_base` | `a □` |
 | `term_mul_tail` | `NUMBER` | `k` |
@@ -713,8 +718,6 @@ term_id_base → ε
 | `term_div_tail` | `ARRAY LPAREN expression RPAREN` | `□ □ □ □` |
 | `term_id_base` | `LBRACKET expression RBRACKET` | `□ □ i` |
 | `term_id_base` | `ε` | — |
-
-> Операции `*` и `/` в `term'` стоят **последними** — после обоих операндов (постфиксная форма).
 
 ---
 
