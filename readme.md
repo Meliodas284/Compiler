@@ -582,7 +582,9 @@ B  → ASSIGN expression SEMICOLON
 B  → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON
 ```
 Семантические действия для `A → ID B`: `a □`
+
 Для `B → ASSIGN expression SEMICOLON`: `□ □ :=` (`:=` записывается после вычисления выражения, поэтому стоит последним перед `;`, которое не генерирует ничего: `□ □ :=`)
+
 Для `B → LBRACKET expression RBRACKET ASSIGN expression SEMICOLON`: `□ □ i □ □ :=` (после индекса — операция `i`; после выражения правой части — `:=`)
 
 ### Выражения и термы
