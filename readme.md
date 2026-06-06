@@ -591,7 +591,7 @@ term_id_base → ε
 | `statement_list` | `ID statement_list_id_tail statement_list` | `a □ □` |
 | `statement_list` | `IF LPAREN condition RPAREN block else_part statement_list` | `□ □ □ 1 □ □ □` |
 | `statement_list` | `WHILE LPAREN condition RPAREN block statement_list` | `4 □ □ 1 □ 5` |
-| `statement_list` | `READ LPAREN ID read_tail RPAREN SEMICOLON statement_list` | `□ □ a □ □ □ □` |
+| `statement_list` | `READ LPAREN ID read_tail RPAREN SEMICOLON statement_list` | `□ □ a □ □ r □` |
 | `statement_list` | `WRITE LPAREN expression RPAREN SEMICOLON statement_list` | `□ □ □ □ w □` |
 | `statement_list` | `LBRACE statement_list RBRACE statement_list` | `□ □ □ □` |
 | `statement_list` | `ε` | — |
@@ -616,7 +616,7 @@ term_id_base → ε
 | Нетерминал | Правая часть | Сем. действия |
 |------------|-------------|--------------|
 | `read_tail` | `LBRACKET expression RBRACKET` | `□ □ i` |
-| `read_tail` | `ε` | `r` |
+| `read_tail` | `ε` | — |
 
 ### Условие
 
